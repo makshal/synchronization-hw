@@ -1,7 +1,4 @@
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class Main {
 
@@ -27,38 +24,51 @@ public class Main {
                     } else {
                         sizeToFreq.put(count, 1);
                     }
+                    sizeToFreq.notify();
                 }
             });
 
             threadList.add(thread);
         }
 
+        Thread newThread = new Thread(
+                () -> {
+                    while (!Thread.interrupted()) {
+                        synchronized (sizeToFreq) {
+                            try {
+                                sizeToFreq.wait();
+                            } catch (InterruptedException e) {
+                                throw new RuntimeException(e);
+                            }
+                            Optional<Map.Entry<Integer, Integer>> entry = sizeToFreq.entrySet()
+                                    .stream()
+                                    .max(Map.Entry.comparingByValue());
+
+                            if (entry.isPresent()) {
+                                Map.Entry<Integer, Integer> maxEntry = entry.get();
+                                int maxValue = maxEntry.getValue();
+                                int maxKey = maxEntry.getKey();
+
+                                System.out.println("Самое частое количество повторений " + maxKey + " (встретилось " + maxValue + " раз)");
+                            }
+                        }
+                    }
+                }
+        );
+
         for (Thread thread : threadList) {
             thread.start();
         }
+
+        newThread.start();
 
         for (Thread thread : threadList) {
             thread.join();
         }
 
-        Optional<Map.Entry<Integer, Integer>> entry = sizeToFreq.entrySet()
-                .stream()
-                .max(Map.Entry.comparingByValue());
+        newThread.join();
 
-        if (entry.isPresent()) {
-            Map.Entry<Integer, Integer> maxEntry = entry.get();
-            int maxValue = maxEntry.getValue();
-            int maxKey = maxEntry.getKey();
-
-            System.out.println("Самое частое количество повторений " + maxKey + " (встретилось " + maxValue + " раз)");
-            System.out.println("Другие размеры:");
-
-            sizeToFreq.remove(maxKey);
-
-            sizeToFreq.forEach((key, value) -> {
-                System.out.println("- " + key + "(" + value + " раз)");
-            });
-        }
+        newThread.interrupt();
 
     }
 
