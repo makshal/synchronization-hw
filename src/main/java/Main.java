@@ -38,7 +38,7 @@ public class Main {
                             try {
                                 sizeToFreq.wait();
                             } catch (InterruptedException e) {
-                                throw new RuntimeException(e);
+                                break;
                             }
                             Optional<Map.Entry<Integer, Integer>> entry = sizeToFreq.entrySet()
                                     .stream()
@@ -56,19 +56,18 @@ public class Main {
                 }
         );
 
+        newThread.start();
+
         for (Thread thread : threadList) {
             thread.start();
         }
-
-        newThread.start();
 
         for (Thread thread : threadList) {
             thread.join();
         }
 
-        newThread.join();
-
         newThread.interrupt();
+        newThread.join();
 
     }
 
